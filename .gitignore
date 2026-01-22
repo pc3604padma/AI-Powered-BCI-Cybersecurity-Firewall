@@ -1,0 +1,6 @@
+bci_env/
+__pycache__/
+*.pyc
+
+data/raw/
+logs/
