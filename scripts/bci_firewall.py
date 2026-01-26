@@ -23,10 +23,15 @@ os.makedirs("logs", exist_ok=True)
 # -----------------------------
 # Policy configuration
 # -----------------------------
-ANOMALY_THRESHOLD = 3   # escalate after 3 anomalies
-
-# Track anomalies per session
+ANOMALY_THRESHOLD = 3
 session_anomaly_count = defaultdict(int)
+
+# -----------------------------
+# Alert handler
+# -----------------------------
+def raise_alert(level, message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[ALERT - {level}] {timestamp} | {message}")
 
 # -----------------------------
 # Firewall decision engine
@@ -43,10 +48,12 @@ def firewall_decision(eeg_features, session_id="SESSION_1"):
 
             if session_anomaly_count[session_id] >= ANOMALY_THRESHOLD:
                 decision = "QUARANTINE"
-                reason = "Repeated anomalies detected – session quarantined"
+                reason = "Repeated anomalies detected"
+                raise_alert("CRITICAL", f"{session_id} quarantined due to repeated EEG anomalies")
             else:
                 decision = "BLOCK"
                 reason = "Anomalous EEG pattern detected"
+                raise_alert("WARNING", f"Anomalous EEG detected in {session_id}")
 
         else:
             decision = "ALLOW"
