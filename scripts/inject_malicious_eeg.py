@@ -19,19 +19,18 @@ df_normal["label"] = 0  # normal
 # -----------------------------
 df_malicious = df.copy()
 
-# 1. Amplitude scaling attack
-df_malicious *= np.random.uniform(1.5, 3.0)
+# 🔥 STRONG ATTACK
+df_malicious *= np.random.uniform(4.0, 8.0)
 
-# 2. Frequency band distortion
+# frequency distortion
 for col in ["alpha", "beta", "gamma"]:
-    df_malicious[col] *= np.random.uniform(2.0, 4.0)
+    df_malicious[col] *= np.random.uniform(3.0, 6.0)
 
-# 3. Random noise injection
-noise = np.random.normal(0, 0.5, df_malicious.shape)
+# heavy noise
+noise = np.random.normal(0, 2.0, df_malicious.shape)
 df_malicious += noise
 
-# Label malicious EEG
-df_malicious["label"] = 1  # malicious
+df_malicious["label"] = 1
 
 # -----------------------------
 # Combine datasets

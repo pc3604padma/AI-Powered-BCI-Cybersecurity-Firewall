@@ -1,24 +1,21 @@
-import joblib
 import pandas as pd
 from datetime import datetime
 import os
 from collections import defaultdict
 
-# Corrected imports for Streamlit execution
+# LSTM detector
+from scripts.lstm_detector import detect_anomaly
+
+# Alerts
 from scripts.healthcare_alerts import healthcare_alert
 from scripts.email_alerts import send_email
 
 # -----------------------------
 # Configuration
 # -----------------------------
-MODEL_PATH = "models/isolation_forest.pkl"
 LOG_PATH = "logs/firewall.log"
 ANOMALY_THRESHOLD = 3
-
-# -----------------------------
-# Load AI Model
-# -----------------------------
-model = joblib.load(MODEL_PATH)
+TIMESTEPS = 10  # must match LSTM training
 
 # -----------------------------
 # Ensure logs directory exists
@@ -39,34 +36,48 @@ def firewall_decision(eeg_features, session_id="SESSION_1"):
     session_id   : identifier for EEG stream/session
     """
 
-    predictions = model.predict(eeg_features)
+    data = eeg_features.values
+
+    results, scores = detect_anomaly(data)
+
     decisions = []
 
-    for i, pred in enumerate(predictions):
+    for i, (res, score) in enumerate(zip(results, scores)):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # -----------------------------
-        # Decision Logic
+        # 🔥 STRONG DECISION LOGIC
         # -----------------------------
-        if pred == -1:  # anomaly detected
+
+        # Threshold tuning (IMPORTANT)
+        if score > 0.05:   # strong anomaly
             session_anomaly_count[session_id] += 1
 
             if session_anomaly_count[session_id] >= ANOMALY_THRESHOLD:
                 decision = "QUARANTINE"
-                reason = "Repeated anomalies detected"
+                reason = f"Critical anomaly | Score: {round(score,5)}"
             else:
                 decision = "BLOCK"
-                reason = "Anomalous EEG pattern detected"
+                reason = f"High anomaly detected | Score: {round(score,5)}"
+
+        elif score > 0.01:   # mild anomaly
+            decision = "BLOCK"
+            reason = f"Suspicious pattern | Score: {round(score,5)}"
 
         else:
             decision = "ALLOW"
-            reason = "Normal EEG pattern"
+            reason = f"Normal EEG | Score: {round(score,5)}"
+
+        # -----------------------------
+        # DEBUG PRINT (REMOVE LATER)
+        # -----------------------------
+        print(f"[DEBUG] Score: {score:.5f} → {decision}")
 
         # -----------------------------
         # Logging
         # -----------------------------
         log_entry = (
-            f"{timestamp} | {session_id} | Packet {i+1} | "
+            f"{timestamp} | {session_id} | Seq {i+1} | "
             f"{decision} | {reason}\n"
         )
 
@@ -86,7 +97,8 @@ def firewall_decision(eeg_features, session_id="SESSION_1"):
                 "⚠ BCI Firewall Warning",
                 f"Warning: Abnormal EEG detected.\n\n"
                 f"Session: {session_id}\n"
-                f"Action Taken: BLOCK\n"
+                f"Action: BLOCK\n"
+                f"Score: {round(score,5)}\n"
                 f"Time: {timestamp}"
             )
 
@@ -95,7 +107,8 @@ def firewall_decision(eeg_features, session_id="SESSION_1"):
                 "🚨 BCI Firewall EMERGENCY",
                 f"Critical EEG anomaly detected.\n\n"
                 f"Session: {session_id}\n"
-                f"Action Taken: QUARANTINE\n"
+                f"Action: QUARANTINE\n"
+                f"Score: {round(score,5)}\n"
                 f"Time: {timestamp}"
             )
 
@@ -103,18 +116,19 @@ def firewall_decision(eeg_features, session_id="SESSION_1"):
 
     return decisions
 
-
 # -----------------------------
 # Standalone Test Mode
 # -----------------------------
 if __name__ == "__main__":
 
-    print("Running BCI Firewall Standalone Mode...\n")
+    print("Running LSTM-based BCI Firewall...\n")
 
     test_data = pd.read_csv("data/processed/eeg_features_labeled.csv")
-    X_test = test_data.drop(columns=["label"]).head(10)
 
-    results = firewall_decision(X_test, session_id="EEG_STREAM_DEMO")
+    X_test = test_data.drop(columns=["label"])
+
+    # Use enough rows for sequence
+    results = firewall_decision(X_test.head(50), session_id="EEG_STREAM_DEMO")
 
     for i, res in enumerate(results):
-        print(f"Packet {i+1}: {res}")
+        print(f"Sequence {i+1}: {res}")
