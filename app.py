@@ -20,6 +20,17 @@ from scripts.bci_firewall import firewall_decision
 from scripts.mixed_data_utils import create_realistic_stream_test
 from database import log_firewall_scan, get_firewall_history, get_firewall_stats
 
+# ========== CACHING WRAPPER FOR DATABASE CALLS (PERFORMANCE OPTIMIZATION) ==========
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def cached_get_firewall_history(email, limit=50):
+    """Cached database call to get firewall history"""
+    return get_firewall_history(email, limit=limit)
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def cached_get_firewall_stats(email):
+    """Cached database call to get firewall statistics"""
+    return get_firewall_stats(email)
+
 # ========== PAGE CONFIG ==========
 st.set_page_config(page_title="Synora - BCI Security", layout="wide")
 
@@ -495,7 +506,7 @@ else:
         
         with tab1:
             try:
-                history = get_firewall_history(st.session_state.email, limit=50)
+                history = cached_get_firewall_history(st.session_state.email, limit=50)
                 if history and len(history) > 0 and isinstance(history, list):
                     st.markdown(f"**Total Scans:** {len(history)}")
                     history_display = []
@@ -539,7 +550,7 @@ else:
         
         with tab2:
             try:
-                stats = get_firewall_stats(st.session_state.email)
+                stats = cached_get_firewall_stats(st.session_state.email)
                 if stats and isinstance(stats, dict) and stats.get('total_scans', 0) > 0:
                     total_scans = int(stats.get('total_scans', 0))
                     avg_accuracy = float(stats.get('avg_accuracy', 0))

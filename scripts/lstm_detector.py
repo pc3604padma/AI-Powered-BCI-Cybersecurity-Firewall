@@ -1,9 +1,13 @@
 import numpy as np
+import streamlit as st
 from tensorflow.keras.models import load_model
 from models.lstm_autoencoder import create_sequences
 
-# Load model
-model = load_model("models/lstm_autoencoder.h5", compile=False)
+# 🔥 LAZY LOAD: Only load model when needed (cached)
+@st.cache_resource
+def get_model():
+    """Load model once and cache it across app reruns"""
+    return load_model("models/lstm_autoencoder.h5", compile=False)
 
 # Threshold (CALIBRATED from normal data only)
 # Calculated by: calibrate_threshold.py
@@ -18,6 +22,7 @@ def get_optimal_threshold(df_with_labels):
     Calculate threshold using ONLY normal data (label=0)
     This ensures the model's reconstruction baseline is set correctly
     """
+    model = get_model()
     from models.lstm_autoencoder import create_sequences
     
     # Extract ONLY normal data
@@ -45,7 +50,7 @@ def get_optimal_threshold(df_with_labels):
 # Anomaly Detection Function
 # -----------------------------
 def detect_anomaly(data):
-
+    model = get_model()
     sequences = create_sequences(data, timesteps=10)
 
     if len(sequences) == 0:
@@ -73,7 +78,7 @@ def detect_anomaly(data):
 # Threshold Calculation (DEPRECATED - use get_optimal_threshold instead)
 # ⚠️  This function uses mixed data (normal + malicious). Use get_optimal_threshold()
 def calculate_threshold(data):
-
+    model = get_model()
     sequences = create_sequences(data, timesteps=10)
 
     # 🔥 FIX FOR YOUR ERROR

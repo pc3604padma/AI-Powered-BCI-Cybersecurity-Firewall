@@ -22,3 +22,19 @@ headless = true
 runOnSave = false
 maxUploadSize = 200
 enableXsrfProtection = true
+maxMessageSize = 200
+enableCORS = false
+
+[client]
+toolbarMode = "viewer"
+
+[logger]
+level = "warning"
+
+[runner]
+magicEnabled = true
+fastReruns = true
+
+[cache]
+maxEntries = 1000
+expiredSessionLifetime = 86400
