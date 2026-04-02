@@ -22,9 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 
 # Install Python dependencies with optimized flags
-RUN pip install --no-cache-dir -r requirements.txt && \
-    # Pre-compile Python files to .pyc for faster startup
-    python -m compileall -q /usr/local/lib/python3.10/site-packages/
+RUN pip install --no-cache-dir --upgrade pip setuptools && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
