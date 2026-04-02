@@ -26,30 +26,35 @@ def log_firewall_scan(email, num_packets, num_sequences, decisions, is_malicious
         normal_count: Total normal packets
         decision_breakdown: Dict with ALLOW/BLOCK/QUARANTINE counts
     """
-    log_entry = {
-        "email": email,
-        "timestamp": datetime.now(),
-        "scan_config": {
-            "total_packets": num_packets,
-            "total_sequences": num_sequences,
-            "injection_rate": f"{(malicious_count/num_packets)*100:.1f}%"
-        },
-        "results": {
-            "accuracy": accuracy,
-            "malicious_detected": malicious_count,
-            "normal_passed": normal_count,
-            "decision_breakdown": decision_breakdown or {}
-        },
-        "statistics": {
-            "total_decisions": len(decisions),
-            "decisions_list": decisions[:50],  # Store first 50 for reference
-            "malicious_distribution": sum(is_malicious)
-        },
-        "session_id": f"{email}_{datetime.now().timestamp()}"
-    }
-    
-    result = firewall_logs_collection.insert_one(log_entry)
-    return result.inserted_id
+    try:
+        # Ensure all data types are JSON-serializable
+        log_entry = {
+            "email": str(email),
+            "timestamp": datetime.now(),
+            "scan_config": {
+                "total_packets": int(num_packets),
+                "total_sequences": int(num_sequences),
+                "injection_rate": f"{(int(malicious_count)/int(num_packets))*100:.1f}%" if int(num_packets) > 0 else "0.0%"
+            },
+            "results": {
+                "accuracy": float(accuracy),
+                "malicious_detected": int(malicious_count),
+                "normal_passed": int(normal_count),
+                "decision_breakdown": {str(k): int(v) for k, v in (decision_breakdown or {}).items()}
+            },
+            "statistics": {
+                "total_decisions": len(decisions),
+                "decisions_list": [str(d) for d in decisions[:50]],  # Convert to string for safety
+                "malicious_distribution": sum(1 for x in is_malicious if x)  # Count True values
+            },
+            "session_id": f"{email}_{datetime.now().timestamp()}"
+        }
+        
+        result = firewall_logs_collection.insert_one(log_entry)
+        return result.inserted_id
+    except Exception as insert_error:
+        print(f"❌ Database Insert Error: {str(insert_error)}")
+        return None
 
 
 def get_firewall_history(email, limit=20):
@@ -68,7 +73,8 @@ def get_firewall_history(email, limit=20):
                 log["timestamp"] = "N/A"
         
         return logs
-    except Exception as e:
+    except Exception as history_error:
+        print(f"❌ History Query Error: {str(history_error)}")
         return []
 
 
@@ -81,7 +87,40 @@ def get_firewall_stats(email):
             "total_scans": {"$sum": 1},
             "avg_accuracy": {"$avg": "$results.accuracy"},
             "total_threats": {"$sum": "$results.malicious_detected"},
-            "total_packets_scanned": {"$sum": "$scan_config.total_packets"}
+            "total_packets_scanned": {"$sum": "$scan_config.total_packets"},
+            "decision_breakdown": {"$push": "$results.decision_breakdown"}
+        }},
+        {"$project": {
+            "total_scans": 1,
+            "avg_accuracy": 1,
+            "total_threats": 1,
+            "total_packets_scanned": 1,
+            "decision_distribution": {
+                "ALLOW": {
+                    "$sum": [
+                        {"$ifNull": [
+                            {"$getField": {"field": "ALLOW", "input": {"$arrayElemAt": ["$decision_breakdown", 0]}}},
+                            0
+                        ]}
+                    ]
+                },
+                "BLOCK": {
+                    "$sum": [
+                        {"$ifNull": [
+                            {"$getField": {"field": "BLOCK", "input": {"$arrayElemAt": ["$decision_breakdown", 0]}}},
+                            0
+                        ]}
+                    ]
+                },
+                "QUARANTINE": {
+                    "$sum": [
+                        {"$ifNull": [
+                            {"$getField": {"field": "QUARANTINE", "input": {"$arrayElemAt": ["$decision_breakdown", 0]}}},
+                            0
+                        ]}
+                    ]
+                }
+            }
         }}
     ]
     
@@ -89,12 +128,23 @@ def get_firewall_stats(email):
         result = list(firewall_logs_collection.aggregate(pipeline))
         if result:
             stats = result[0]
-            # Remove MongoDB's _id field
+            # Remove MongoDB's _id field if present
             stats.pop('_id', None)
+            
+            # Ensure decision_distribution is a dict with counts
+            if 'decision_distribution' not in stats or not isinstance(stats['decision_distribution'], dict):
+                # Simpler fallback: just use raw counts
+                stats['decision_distribution'] = {
+                    "ALLOW": 0,
+                    "BLOCK": 0,
+                    "QUARANTINE": 0
+                }
+            
             return stats
         else:
             return None
-    except:
+    except Exception as stats_error:
+        print(f"❌ Stats Query Error: {str(stats_error)}")
         return None
 
 
