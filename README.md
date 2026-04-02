@@ -29,12 +29,26 @@ docker-compose up -d
 # App: http://localhost:8501 | MongoDB: http://localhost:8081
 ```
 
-### Cloud Deployment
-- **Streamlit Cloud**: Push to GitHub → https://streamlit.io/cloud → Select repo
-- **Heroku**: `heroku create synora-app` + add MONGODB_URI secret
-- **AWS/Azure**: Use Docker image with container registry
+### Deploy to Render (Free Tier) 🚀
+1. Push code to GitHub: `git push origin main`
+2. Go to https://render.com/dashboard
+3. Click **New +** → **Web Service**
+4. Select your GitHub repository
+5. Add environment variables:
+   ```
+   MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/synora
+   MONGODB_DB=synora
+   ```
+   > Get MongoDB URI: https://cloud.mongodb.com (create free M0 cluster)
+6. Click **"Create Web Service"** → Deploy in ~5 minutes ✅
 
-> **Prerequisites**: MongoDB running locally or cloud connection string in environment
+**Render Free Tier Notes:**
+- ✅ Free hosting
+- ⚠️ App sleeps after 15 min inactivity (30-60s to wake)
+- ✅ Auto-deploys on git push
+- ✅ Free SSL certificate
+
+> **For production use**: Upgrade to Render Standard ($12/month) for 24/7 uptime and no sleeping
 
 ---
 
