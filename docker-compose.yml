@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Streamlit Application
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/
+      - MONGODB_DB=synora
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_HEADLESS=true
+    depends_on:
+      - mongodb
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    networks:
+      - synora_network
+    restart: unless-stopped
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=synora
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - synora_network
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Express (Web Admin Interface - Optional)
+  mongo-express:
+    image: mongo-express:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongodb:27017/
+      - ME_CONFIG_MONGODB_DATABASE=synora
+    depends_on:
+      - mongodb
+    networks:
+      - synora_network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  synora_network:
+    driver: bridge

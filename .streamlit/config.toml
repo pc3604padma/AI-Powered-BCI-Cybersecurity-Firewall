@@ -1,7 +1,24 @@
 [theme]
 base="dark"
-primaryColor="#ff4b4b"
-backgroundColor="#0e1117"
-secondaryBackgroundColor="#1e1e2f"
-textColor="#fafafa"
+primaryColor="#e94540"
+backgroundColor="#0f0f1e"
+secondaryBackgroundColor="#1a1a2e"
+textColor="#ffffff"
 font="sans serif"
+
+[client]
+showErrorDetails = true
+toolbarMode = "viewer"
+
+[logger]
+level = "info"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+port = 8501
+headless = true
+runOnSave = false
+maxUploadSize = 200
+enableXsrfProtection = true
