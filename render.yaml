@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: synora-bci-firewall
+    env: python
+    plan: standard
+    buildCommand: pip install --no-cache-dir -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --logger.level warning --client.showErrorDetails false
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONDONTWRITEBYTECODE
+        value: "1"
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: "true"
+      - key: STREAMLIT_LOGGER_LEVEL
+        value: "warning"
+      - key: PORT
+        value: "10000"
+    healthCheckPath: /_stcore/health
+    healthCheckStartupFailureThresholdCount: 10
+    
+  - type: pserv
+    name: synora-mongodb
+    env: docker
+    plan: standard
+    repo: https://hub.docker.com/_/mongo
+    envVars:
+      - key: MONGO_INITDB_DATABASE
+        value: synora
