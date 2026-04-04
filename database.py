@@ -1,10 +1,14 @@
+import os
 from pymongo import MongoClient
 from datetime import datetime
 import json
 
-client = MongoClient("mongodb://localhost:27017/")
+mongo_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+mongo_db = os.getenv("MONGODB_DB", "synora")
 
-db = client["synora"]
+client = MongoClient(mongo_uri)
+
+db = client[mongo_db]
 
 users_collection = db["users"]
 firewall_logs_collection = db["firewall_logs"]
